@@ -66,6 +66,7 @@ class DebugMenuSubState extends MusicBeatSubState
     #if FEATURE_RESULTS_DEBUG
     createItem("RESULTS SCREEN DEBUG", openTestResultsScreen);
     #end
+    createItem("CUTSCENE EDITOR DEBUG", openCutsceneEditor);
     #if sys
     createItem("OPEN CRASH LOG FOLDER", openLogFolder);
     #end
@@ -145,6 +146,11 @@ class DebugMenuSubState extends MusicBeatSubState
     FlxG.switchState(() -> new funkin.ui.debug.results.ResultsDebugSubState());
   }
   #end
+
+  function openCutsceneEditor():Void
+  {
+    FlxG.switchState(() -> new funkin.ui.debug.cutscene.CutsceneEditorState());
+  }
 
   #if sys
   function openLogFolder()
