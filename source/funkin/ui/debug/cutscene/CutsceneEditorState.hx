@@ -7,6 +7,7 @@ import flixel.util.FlxColor;
 import haxe.ui.backend.flixel.UIState;
 import haxe.ui.containers.menus.MenuItem;
 import haxe.ui.containers.menus.Menu;
+import haxe.ui.containers.ListView;
 import haxe.ui.containers.menus.MenuBar;
 import flixel.FlxObject;
 import haxe.ui.containers.menus.MenuOptionBox;
@@ -24,24 +25,34 @@ import funkin.play.character.BaseCharacter;
 import flixel.math.FlxMath;
 import funkin.modding.events.ScriptEvent;
 import funkin.modding.events.ScriptEventDispatcher;
+import haxe.ui.containers.dialogs.CollapsibleDialog;
 
 @:build(haxe.ui.ComponentBuilder.build('assets/exclude/data/ui/cutscene-editor/main-view.xml'))
 class CutsceneEditorState extends UIState
 {
-  var menubar:MenuBar;
-
   var camHUD:FlxCamera;
   var camGame:FunkinCamera;
 
   // all menu items
   var menubarItemExit:MenuItem;
   var menubarItemResetZoom:MenuItem;
+  var menubar:MenuBar;
+  var objects:ListView;
 
   var currentStage:Null<Stage> = null;
 
   var moveableObjects:Array<FlxSprite> = [];
 
-  var curSelected:Null<Int> = null;
+  var nameMap:Map<FlxSprite, String> = new Map<FlxSprite, String>();
+
+  var curSelected(default, set):Null<Int> = null;
+
+  function set_curSelected(value:Int):Int
+  {
+    objects.selectedIndex = value;
+    curSelected = value;
+    return value;
+  }
 
   var bg:FlxSprite;
 
@@ -50,16 +61,18 @@ class CutsceneEditorState extends UIState
     WindowManager.instance.reset();
     FlxG.sound.music?.stop();
     WindowUtil.setWindowTitle("Friday Night Funkin\' Cutscene Editor");
+    currentStage = null; // TODO: PRECHACHE
 
     camGame = new FunkinCamera();
     camHUD = new FlxCamera();
     camHUD.bgColor.alpha = 0;
 
+    trace(objects);
+
     FlxG.cameras.reset(camGame);
     FlxG.cameras.add(camHUD, false);
     FlxG.cameras.setDefaultDrawTarget(camGame, true);
 
-    trace(camGame.screen);
     persistentUpdate = false;
 
     bg = FlxGridOverlay.create(10, 10);
@@ -84,17 +97,16 @@ class CutsceneEditorState extends UIState
 
     addUI();
 
-    loadStage('mainStage');
+    loadStage('phillyStreets');
     initCharacters();
   }
 
   var zoomToLerp:Float = FlxG.camera.zoom;
-
   var camPosToLerp:Array<Float> = [FlxG.camera.scroll.x, FlxG.camera.scroll.y];
 
   override function update(elapsed:Float):Void
   {
-    if (FlxG.mouse.wheel != 0) zoomToLerp += 0.05 * FlxG.mouse.wheel;
+    if (FlxG.mouse.wheel != 0) zoomToLerp += 0.02 * FlxG.mouse.wheel;
 
     FlxG.camera.zoom = FlxMath.lerp(FlxG.camera.zoom, zoomToLerp, 0.1);
     FlxG.camera.scroll.x = FlxMath.lerp(FlxG.camera.scroll.x, camPosToLerp[0], 0.1);
@@ -102,13 +114,13 @@ class CutsceneEditorState extends UIState
 
     handleMoving();
 
+    updateBGSize();
+
     super.update(elapsed);
   }
 
   var isMovingCam:Bool = false;
-
   var firstClick:Bool = false;
-
   var offset:Array<Float> = [];
 
   function handleMoving():Void
@@ -138,8 +150,6 @@ class CutsceneEditorState extends UIState
     {
       isMovingCam = false;
     }
-
-    trace(selectables[0]);
 
     if (!isMovingCam)
     {
@@ -195,6 +205,13 @@ class CutsceneEditorState extends UIState
     }
   }
 
+  function updateBGSize():Void
+  {
+    bg.scale.set(1 / FlxG.camera.zoom, 1 / FlxG.camera.zoom);
+    bg.updateHitbox();
+    bg.screenCenter();
+  }
+
   // from playstate
   function initCharacters():Void
   {
@@ -223,7 +240,7 @@ class CutsceneEditorState extends UIState
       if (girlfriend != null)
       {
         currentStage.addCharacter(girlfriend, GF);
-        moveableObjects.push(girlfriend);
+        addToList(girlfriend, 'girlfriend');
 
         #if FEATURE_DEBUG_FUNCTIONS
         FlxG.console.registerObject('gf', girlfriend);
@@ -233,7 +250,7 @@ class CutsceneEditorState extends UIState
       if (boyfriend != null)
       {
         currentStage.addCharacter(boyfriend, BF, false);
-        moveableObjects.push(boyfriend);
+        addToList(boyfriend, 'boyfriend');
 
         #if FEATURE_DEBUG_FUNCTIONS
         FlxG.console.registerObject('bf', boyfriend);
@@ -243,7 +260,7 @@ class CutsceneEditorState extends UIState
       if (dad != null)
       {
         currentStage.addCharacter(dad, DAD, false);
-        moveableObjects.push(dad);
+        addToList(dad, 'dad');
 
         #if FEATURE_DEBUG_FUNCTIONS
         FlxG.console.registerObject('dad', dad);
@@ -270,9 +287,10 @@ class CutsceneEditorState extends UIState
 
       resetCameraZoom();
 
-      for (object in currentStage.members)
+      @:privateAccess
+      for (object in currentStage.namedProps)
       {
-        moveableObjects.push(object);
+        addToList(object, object.name);
       }
       resortObjects();
 
@@ -290,12 +308,31 @@ class CutsceneEditorState extends UIState
     }
   }
 
+  function refreshList():Void
+  {
+    objects.dataSource.clear();
+
+    for (object in moveableObjects)
+    {
+      trace(nameMap[object]);
+      objects.dataSource.add({text: nameMap[object], id: object});
+    }
+  }
+
+  function addToList(object:FlxSprite, name:String):Void
+  {
+    moveableObjects.push(object);
+    nameMap[object] = name;
+  }
+
   function resortObjects():Void
   {
     moveableObjects.sort(function(a, b)
     {
       return a.zIndex - b.zIndex;
     });
+
+    refreshList();
   }
 
   function addUI():Void
@@ -306,6 +343,12 @@ class CutsceneEditorState extends UIState
 
   function menuExit():Void
   {
+    if (currentStage != null)
+    {
+      remove(currentStage);
+      currentStage.kill();
+      currentStage = null;
+    }
     Cursor.hide();
     FlxG.switchState(() -> new MainMenuState());
     FlxG.sound.music.stop();
