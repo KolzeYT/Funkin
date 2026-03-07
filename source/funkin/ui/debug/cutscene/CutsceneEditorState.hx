@@ -9,12 +9,16 @@ import haxe.ui.containers.menus.MenuItem;
 import haxe.ui.containers.menus.Menu;
 import haxe.ui.containers.ListView;
 import haxe.ui.containers.menus.MenuBar;
+import funkin.audio.FunkinSound;
+import haxe.ui.events.UIEvent;
 import flixel.FlxObject;
 import haxe.ui.containers.menus.MenuOptionBox;
 import funkin.data.character.CharacterData.CharacterDataParser;
 import haxe.ui.containers.menus.MenuCheckBox;
 import haxe.ui.containers.windows.WindowManager;
+import flixel.graphics.frames.FlxFrame;
 import flixel.addons.display.FlxGridOverlay;
+import funkin.ui.debug.cutscene.toolboxes.*;
 import haxe.ui.core.Screen;
 import funkin.ui.mainmenu.MainMenuState;
 import funkin.input.Cursor;
@@ -25,13 +29,31 @@ import funkin.play.character.BaseCharacter;
 import flixel.math.FlxMath;
 import funkin.modding.events.ScriptEvent;
 import funkin.modding.events.ScriptEventDispatcher;
+import openfl.geom.Rectangle;
 import haxe.ui.containers.dialogs.CollapsibleDialog;
+
+using flixel.util.FlxSpriteUtil;
 
 @:build(haxe.ui.ComponentBuilder.build('assets/exclude/data/ui/cutscene-editor/main-view.xml'))
 class CutsceneEditorState extends UIState
 {
+  public static final MAX_Z_INDEX:Int = 10000;
+
+  public var moveStep:Int = 1;
+
   var camHUD:FlxCamera;
   var camGame:FunkinCamera;
+
+  public var instance:Null<CutsceneEditorState>;
+
+  public var selectedSprite(get, never):Dynamic;
+
+  function get_selectedSprite():Dynamic
+  {
+    return moveableObjects[curSelected];
+  }
+
+  var swagOutlines:FlxSprite;
 
   // all menu items
   var menubarItemExit:MenuItem;
@@ -45,23 +67,25 @@ class CutsceneEditorState extends UIState
 
   var nameMap:Map<FlxSprite, String> = new Map<FlxSprite, String>();
 
-  var curSelected(default, set):Null<Int> = null;
-
-  function set_curSelected(value:Int):Int
-  {
-    objects.selectedIndex = value;
-    curSelected = value;
-    return value;
-  }
+  var curSelected:Null<Int> = null;
 
   var bg:FlxSprite;
+
+  var dialogs:Map<CutsceneEditorDialogType, CutsceneEditorDefaultToolbox> = new Map<CutsceneEditorDialogType, CutsceneEditorDefaultToolbox>();
+
+  var isCursorOverHaxeUI(get, never):Bool;
+
+  function get_isCursorOverHaxeUI():Bool
+  {
+    return Screen.instance.hasSolidComponentUnderPoint(Screen.instance.currentMouseX, Screen.instance.currentMouseY);
+  }
 
   override function create():Void
   {
     WindowManager.instance.reset();
+    instance = this;
     FlxG.sound.music?.stop();
     WindowUtil.setWindowTitle("Friday Night Funkin\' Cutscene Editor");
-    currentStage = null; // TODO: PRECHACHE
 
     camGame = new FunkinCamera();
     camHUD = new FlxCamera();
@@ -94,11 +118,17 @@ class CutsceneEditorState extends UIState
     add(testBlock);
 
     Cursor.show();
+    FunkinSound.playMusic('chartEditorLoop', {
+      startingVolume: 0.0
+    });
+    FlxG.sound.music.fadeIn(10, 0, 1);
 
     addUI();
 
     loadStage('phillyStreets');
     initCharacters();
+
+    toggleDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
   }
 
   var zoomToLerp:Float = FlxG.camera.zoom;
@@ -106,13 +136,16 @@ class CutsceneEditorState extends UIState
 
   override function update(elapsed:Float):Void
   {
-    if (FlxG.mouse.wheel != 0) zoomToLerp += 0.02 * FlxG.mouse.wheel;
+    if (!isCursorOverHaxeUI)
+    {
+      if (FlxG.mouse.wheel != 0) zoomToLerp += 0.02 * FlxG.mouse.wheel;
+
+      handleMoving();
+    }
 
     FlxG.camera.zoom = FlxMath.lerp(FlxG.camera.zoom, zoomToLerp, 0.1);
     FlxG.camera.scroll.x = FlxMath.lerp(FlxG.camera.scroll.x, camPosToLerp[0], 0.1);
     FlxG.camera.scroll.y = FlxMath.lerp(FlxG.camera.scroll.y, camPosToLerp[1], 0.1);
-
-    handleMoving();
 
     updateBGSize();
 
@@ -157,10 +190,11 @@ class CutsceneEditorState extends UIState
       {
         if (FlxG.mouse.pressed)
         {
-          if (FlxG.mouse.justPressed && curSelected != moveableObjects.indexOf(selectables[0]))
+          if (FlxG.mouse.justPressed
+            && (curSelected < 0 || !FlxG.mouse.overlaps(moveableObjects[curSelected]))
+            && curSelected != moveableObjects.indexOf(selectables[0]))
           {
-            firstClick = true;
-            curSelected = moveableObjects.indexOf(selectables[0]);
+            changeSelectedObject(moveableObjects.indexOf(selectables[0]));
           }
           Cursor.cursorMode = Grabbing;
         }
@@ -189,9 +223,7 @@ class CutsceneEditorState extends UIState
       {
         if (!overlaps)
         {
-          moveableObjects[curSelected].shader = null;
-          curSelected = -1;
-          firstClick = false;
+          changeSelectedObject(-1, false);
         }
       }
 
@@ -201,6 +233,8 @@ class CutsceneEditorState extends UIState
       {
         if (FlxG.mouse.justPressed) offset = [FlxG.mouse.viewX - theThing.x, FlxG.mouse.viewY - theThing.y];
         theThing.setPosition(FlxG.mouse.viewX - offset[0], FlxG.mouse.viewY - offset[1]);
+        swagOutlines.setPosition(theThing.x, theThing.y);
+        updateDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
       }
     }
   }
@@ -249,7 +283,7 @@ class CutsceneEditorState extends UIState
 
       if (boyfriend != null)
       {
-        currentStage.addCharacter(boyfriend, BF, false);
+        currentStage.addCharacter(boyfriend, BF);
         addToList(boyfriend, 'boyfriend');
 
         #if FEATURE_DEBUG_FUNCTIONS
@@ -259,7 +293,7 @@ class CutsceneEditorState extends UIState
 
       if (dad != null)
       {
-        currentStage.addCharacter(dad, DAD, false);
+        currentStage.addCharacter(dad, DAD);
         addToList(dad, 'dad');
 
         #if FEATURE_DEBUG_FUNCTIONS
@@ -280,6 +314,9 @@ class CutsceneEditorState extends UIState
     if (currentStage != null)
     {
       currentStage.revive(); // Stages are killed and props destroyed when the PlayState is destroyed to save memory.
+
+      @:privateAccess
+      Paths.currentLevel = currentStage._data.directory;
 
       // Actually create and position the sprites.
       var event:ScriptEvent = new ScriptEvent(CREATE, false);
@@ -335,10 +372,55 @@ class CutsceneEditorState extends UIState
     refreshList();
   }
 
+  public function updateDialog(type:CutsceneEditorDialogType)
+  {
+    if (!dialogs.exists(type) && dialogs[type].dialogVisible) return;
+
+    dialogs[type].refresh();
+  }
+
+  public function toggleDialog(type:CutsceneEditorDialogType, show:Bool = true)
+  {
+    if (!dialogs.exists(type)) return;
+
+    dialogs[type].toggle(show);
+    dialogs[type].refresh();
+  }
+
   function addUI():Void
   {
+    dialogs.set(CutsceneEditorDialogType.OBJECT_PROPERTIES, new CutsceneEditorObjectPropertiesToolbox(this));
+
     menubarItemExit.onClick = function(_) menuExit();
     menubarItemResetZoom.onClick = function(_) resetCameraZoom();
+    objects.onChange = function(_) if (objects.selectedIndex != curSelected) changeSelectedObject(objects.selectedIndex, false);
+  }
+
+  function changeSelectedObject(index:Int, first:Bool = true):Void
+  {
+    objects.selectedIndex = index;
+    curSelected = index;
+    firstClick = first;
+
+    if (index >= 0)
+    {
+      var sprite = moveableObjects[index];
+
+      updateDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
+
+      if (members.contains(swagOutlines)) remove(swagOutlines);
+      swagOutlines = new FlxSprite(sprite.x,
+        sprite.y).makeGraphic(Std.int(sprite.frameWidth * sprite.scale.x), Std.int(sprite.frameHeight * sprite.scale.y), FlxColor.TRANSPARENT);
+      swagOutlines.scrollFactor.set(sprite.scrollFactor.x, sprite.scrollFactor.y);
+      var lineStyle:LineStyle = {color: FlxColor.RED, thickness: 6};
+      swagOutlines.visible = true;
+      swagOutlines.drawRect(0, 0, swagOutlines.frameWidth, swagOutlines.frameHeight, FlxColor.TRANSPARENT, lineStyle);
+      add(swagOutlines);
+    }
+    else
+    {
+      if (swagOutlines != null) swagOutlines.visible = false;
+    }
   }
 
   function menuExit():Void
@@ -349,6 +431,7 @@ class CutsceneEditorState extends UIState
       currentStage.kill();
       currentStage = null;
     }
+    instance = null;
     Cursor.hide();
     FlxG.switchState(() -> new MainMenuState());
     FlxG.sound.music.stop();
@@ -358,4 +441,12 @@ class CutsceneEditorState extends UIState
   {
     zoomToLerp = currentStage.camZoom;
   }
+}
+
+enum CutsceneEditorDialogType
+{
+  /**
+   * The Object Properties Options Dialog.
+   */
+  OBJECT_PROPERTIES;
 }

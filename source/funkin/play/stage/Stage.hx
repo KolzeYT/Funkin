@@ -391,9 +391,11 @@ class Stage extends FlxSpriteGroup implements IPlayStateScriptedClass implements
   /**
    * Used by the PlayState to add a character to the stage.
    */
-  public function addCharacter(character:BaseCharacter, charType:CharacterType, intitiateIcons:Bool = true):Void
+  public function addCharacter(character:BaseCharacter, charType:CharacterType):Void
   {
     if (character == null) return;
+
+    var isCutsceneEditor = Std.isOfType(FlxG.state, funkin.ui.debug.cutscene.CutsceneEditorState);
 
     #if FEATURE_DEBUG_FUNCTIONS
     // Temporary marker that shows where the character's location is relative to.
@@ -418,7 +420,7 @@ class Stage extends FlxSpriteGroup implements IPlayStateScriptedClass implements
         stageCharData = _data.characters.bf;
         character.flipX = !character.getDataFlipX();
         character.name = 'bf';
-        if (intitiateIcons) character.initHealthIcon(false);
+        if (!isCutsceneEditor) character.initHealthIcon(false);
       case GF:
         this.characters.set('gf', character);
         stageCharData = _data.characters.gf;
@@ -429,7 +431,7 @@ class Stage extends FlxSpriteGroup implements IPlayStateScriptedClass implements
         stageCharData = _data.characters.dad;
         character.flipX = character.getDataFlipX();
         character.name = 'dad';
-        if (intitiateIcons) character.initHealthIcon(true);
+        if (!isCutsceneEditor) character.initHealthIcon(true);
       default:
         this.characters.set(character.characterId, character);
     }
