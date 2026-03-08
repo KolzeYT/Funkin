@@ -3,6 +3,7 @@ package funkin.ui.debug.cutscene.toolboxes;
 import haxe.ui.containers.VBox;
 import haxe.ui.components.CheckBox;
 import haxe.ui.components.DropDown;
+import haxe.ui.containers.ScrollView;
 import haxe.ui.components.NumberStepper;
 import haxe.ui.events.MouseEvent;
 import haxe.ui.events.UIEvent;
@@ -13,10 +14,12 @@ import flixel.FlxSprite;
 import funkin.ui.debug.stageeditor.handlers.AssetDataHandler;
 
 @:access(funkin.ui.debug.cutscene.CutsceneEditorState)
-@:build(haxe.ui.macros.ComponentMacros.build("assets/exclude/data/ui/cutscene-editor/toolboxes/object-properties.xml"))
+@:build(haxe.ui.macros.ComponentMacros.build("assets/exclude/data/ui/cutscene-editor/toolboxes/properties/object-properties.xml"))
 class CutsceneEditorObjectPropertiesToolbox extends CutsceneEditorDefaultToolbox
 {
   var linkedObj:FlxSprite = null;
+
+  public var objScrollView:ScrollView;
 
   var objPosX:NumberStepper;
   var objPosY:NumberStepper;
@@ -168,6 +171,12 @@ class CutsceneEditorObjectPropertiesToolbox extends CutsceneEditorDefaultToolbox
   function onClose(event:UIEvent):Void
   {
     // stageEditorState.menubarItemWindowObjectProps.selected = false;
+  }
+
+  override public function lock(on:Bool = true):Void
+  {
+    trace(on);
+    objScrollView.disabled = on;
   }
 
   override public function refresh():Void
