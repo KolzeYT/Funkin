@@ -2,6 +2,7 @@ package funkin.ui.debug.cutscene;
 
 import flixel.FlxSprite;
 import flixel.FlxCamera;
+import funkin.ui.debug.FunkinDebugDisplay;
 import funkin.graphics.FunkinCamera;
 import flixel.util.FlxColor;
 import haxe.ui.backend.flixel.UIState;
@@ -19,6 +20,7 @@ import haxe.ui.containers.windows.WindowManager;
 import flixel.graphics.frames.FlxFrame;
 import flixel.addons.display.FlxGridOverlay;
 import funkin.ui.debug.cutscene.toolboxes.*;
+import funkin.ui.debug.cutscene.components.*;
 import haxe.ui.core.Screen;
 import funkin.ui.mainmenu.MainMenuState;
 import funkin.input.Cursor;
@@ -43,6 +45,7 @@ class CutsceneEditorState extends UIState
 
   var camHUD:FlxCamera;
   var camGame:FunkinCamera;
+  var camPreview:FunkinCamera;
 
   public var instance:Null<CutsceneEditorState>;
 
@@ -61,7 +64,11 @@ class CutsceneEditorState extends UIState
   var menubar:MenuBar;
   var objects:ListView;
 
+  var timeline:CutsceneTimeline;
+
   var currentStage:Null<Stage> = null;
+
+  var cameraObject:FlxSprite;
 
   var moveableObjects:Array<FlxSprite> = [];
 
@@ -87,13 +94,22 @@ class CutsceneEditorState extends UIState
     FlxG.sound.music?.stop();
     WindowUtil.setWindowTitle("Friday Night Funkin\' Cutscene Editor");
 
+    Main.debugDisplay.y = 250;
+    Main.debugDisplay.x = 30;
+
     camGame = new FunkinCamera();
+    camPreview = new FunkinCamera();
+    camPreview.x = -450;
+    camPreview.y = -220;
+    camPreview.flashSprite.scaleX = 0.25;
+    camPreview.flashSprite.scaleY = 0.25;
     camHUD = new FlxCamera();
     camHUD.bgColor.alpha = 0;
 
     trace(objects);
 
     FlxG.cameras.reset(camGame);
+    FlxG.cameras.add(camPreview, false);
     FlxG.cameras.add(camHUD, false);
     FlxG.cameras.setDefaultDrawTarget(camGame, true);
 
@@ -125,10 +141,16 @@ class CutsceneEditorState extends UIState
 
     addUI();
 
-    loadStage('phillyStreets');
+    loadStage('mainStageErect');
     initCharacters();
 
     toggleDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
+
+    cameraObject = new FlxSprite().makeGraphic(1280, 720, FlxColor.CYAN);
+    cameraObject.alpha = 0.4;
+    cameraObject.zIndex = MAX_Z_INDEX;
+    addToList(cameraObject, 'Camera');
+    add(cameraObject);
   }
 
   var zoomToLerp:Float = FlxG.camera.zoom;
@@ -146,6 +168,10 @@ class CutsceneEditorState extends UIState
     FlxG.camera.zoom = FlxMath.lerp(FlxG.camera.zoom, zoomToLerp, 0.1);
     FlxG.camera.scroll.x = FlxMath.lerp(FlxG.camera.scroll.x, camPosToLerp[0], 0.1);
     FlxG.camera.scroll.y = FlxMath.lerp(FlxG.camera.scroll.y, camPosToLerp[1], 0.1);
+
+    camPreview.scroll.x = cameraObject.x;
+    camPreview.scroll.y = cameraObject.y;
+    camPreview.zoom = 1 - (cameraObject.scale.x - 1);
 
     updateBGSize();
 
@@ -233,7 +259,7 @@ class CutsceneEditorState extends UIState
       {
         if (FlxG.mouse.justPressed) offset = [FlxG.mouse.viewX - theThing.x, FlxG.mouse.viewY - theThing.y];
         theThing.setPosition(FlxG.mouse.viewX - offset[0], FlxG.mouse.viewY - offset[1]);
-        swagOutlines.setPosition(theThing.x, theThing.y);
+        refreshOutline();
         updateDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
       }
     }
@@ -351,7 +377,7 @@ class CutsceneEditorState extends UIState
 
     for (object in moveableObjects)
     {
-      trace(nameMap[object]);
+      if (object != cameraObject) object.cameras = [camGame, camPreview];
       objects.dataSource.add({text: nameMap[object], id: object});
     }
   }
@@ -389,6 +415,7 @@ class CutsceneEditorState extends UIState
 
   function addUI():Void
   {
+    timeline = new CutsceneTimeline();
     dialogs.set(CutsceneEditorDialogType.OBJECT_PROPERTIES, new CutsceneEditorObjectPropertiesToolbox(this));
 
     menubarItemExit.onClick = function(_) menuExit();
@@ -404,22 +431,36 @@ class CutsceneEditorState extends UIState
 
     if (index >= 0)
     {
-      var sprite = moveableObjects[index];
-
       updateDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
 
-      if (members.contains(swagOutlines)) remove(swagOutlines);
-      swagOutlines = new FlxSprite(sprite.x,
-        sprite.y).makeGraphic(Std.int(sprite.frameWidth * sprite.scale.x), Std.int(sprite.frameHeight * sprite.scale.y), FlxColor.TRANSPARENT);
-      swagOutlines.scrollFactor.set(sprite.scrollFactor.x, sprite.scrollFactor.y);
-      var lineStyle:LineStyle = {color: FlxColor.RED, thickness: 6};
+      if (members.contains(cameraObject)) remove(cameraObject);
+      add(cameraObject);
       swagOutlines.visible = true;
-      swagOutlines.drawRect(0, 0, swagOutlines.frameWidth, swagOutlines.frameHeight, FlxColor.TRANSPARENT, lineStyle);
-      add(swagOutlines);
+      refreshOutline();
     }
     else
     {
       if (swagOutlines != null) swagOutlines.visible = false;
+    }
+  }
+
+  public function refreshOutline():Void
+  {
+    var sprite = moveableObjects[curSelected];
+
+    if (members.contains(swagOutlines)) remove(swagOutlines);
+    swagOutlines = new FlxSprite(sprite.x,
+      sprite.y).makeGraphic(Std.int(sprite.frameWidth * sprite.scale.x), Std.int(sprite.frameHeight * sprite.scale.y), FlxColor.TRANSPARENT);
+    swagOutlines.scrollFactor.set(sprite.scrollFactor.x, sprite.scrollFactor.y);
+    swagOutlines.angle = sprite.angle;
+    var lineStyle:LineStyle = {color: FlxColor.RED, thickness: 6};
+    swagOutlines.drawRect(0, 0, swagOutlines.frameWidth, swagOutlines.frameHeight, FlxColor.TRANSPARENT, lineStyle);
+    add(swagOutlines);
+
+    if (sprite == cameraObject)
+    {
+      swagOutlines.x -= (1280 * (sprite.scale.x - 1)) / 2;
+      swagOutlines.y -= (720 * (sprite.scale.y - 1)) / 2;
     }
   }
 
@@ -432,6 +473,10 @@ class CutsceneEditorState extends UIState
       currentStage = null;
     }
     instance = null;
+
+    Main.debugDisplay.y = 10;
+    Main.debugDisplay.x = 10;
+
     Cursor.hide();
     FlxG.switchState(() -> new MainMenuState());
     FlxG.sound.music.stop();

@@ -46,12 +46,20 @@ class CutsceneEditorObjectPropertiesToolbox extends CutsceneEditorDefaultToolbox
     // Numeric callbacks.
     objPosX.onChange = function(_)
     {
-      if (linkedObj != null) linkedObj.x = objPosX.pos;
+      if (linkedObj != null)
+      {
+        linkedObj.x = objPosX.pos;
+        state.refreshOutline();
+      }
     }
 
     objPosY.onChange = function(_)
     {
-      if (linkedObj != null) linkedObj.y = objPosY.pos;
+      if (linkedObj != null)
+      {
+        linkedObj.y = objPosY.pos;
+        state.refreshOutline();
+      }
     }
 
     objZIdx.max = CutsceneEditorState.MAX_Z_INDEX;
@@ -71,7 +79,11 @@ class CutsceneEditorObjectPropertiesToolbox extends CutsceneEditorDefaultToolbox
 
     objAngle.onChange = function(_)
     {
-      if (linkedObj != null) linkedObj.angle = objAngle.pos;
+      if (linkedObj != null)
+      {
+        linkedObj.angle = objAngle.pos;
+        state.refreshOutline();
+      }
     }
 
     objScaleX.onChange = function(_)
@@ -79,7 +91,8 @@ class CutsceneEditorObjectPropertiesToolbox extends CutsceneEditorDefaultToolbox
       if (linkedObj != null)
       {
         linkedObj.scale.x = objScaleX.pos;
-        linkedObj.updateHitbox();
+        if (linkedObj != state.cameraObject) linkedObj.updateHitbox();
+        state.refreshOutline();
       }
     }
 
@@ -88,18 +101,28 @@ class CutsceneEditorObjectPropertiesToolbox extends CutsceneEditorDefaultToolbox
       if (linkedObj != null)
       {
         linkedObj.scale.y = objScaleY.pos;
-        linkedObj.updateHitbox();
+        @:privateAccess
+        if (linkedObj != state.cameraObject) linkedObj.updateHitbox();
+        state.refreshOutline();
       }
     }
 
     objScrollX.onChange = function(_)
     {
-      if (linkedObj != null) linkedObj.scrollFactor.x = objScrollX.pos;
+      if (linkedObj != null)
+      {
+        linkedObj.scrollFactor.x = objScrollX.pos;
+        state.refreshOutline();
+      }
     }
 
     objScrollY.onChange = function(_)
     {
-      if (linkedObj != null) linkedObj.scrollFactor.y = objScrollY.pos;
+      if (linkedObj != null)
+      {
+        linkedObj.scrollFactor.y = objScrollY.pos;
+        state.refreshOutline();
+      }
     }
 
     // objDance.onChange = function(_)
