@@ -1,6 +1,7 @@
 package funkin.ui.debug.cutscene.toolboxes;
 
 import haxe.ui.containers.VBox;
+import haxe.ui.components.Button;
 import haxe.ui.components.CheckBox;
 import haxe.ui.components.DropDown;
 import funkin.ui.debug.cutscene.components.CutsceneCamObject;
@@ -24,6 +25,10 @@ class CutsceneEditorObjectPropertiesCameraToolbox extends CutsceneEditorDefaultT
   var objZoom:NumberStepper;
   var objAlpha:NumberStepper;
   var objAngle:NumberStepper;
+
+  var objBF:Button;
+  var objDad:Button;
+  var objGF:Button;
 
   override public function new(state:CutsceneEditorState)
   {
@@ -68,6 +73,36 @@ class CutsceneEditorObjectPropertiesCameraToolbox extends CutsceneEditorDefaultT
       {
         linkedObj.angle = objAngle.pos;
         state.refreshOutline();
+      }
+    }
+
+    objBF.onClick = function(_)
+    {
+      if (linkedObj != null)
+      {
+        var pos = state.currentStage.getBoyfriend().cameraFocusPoint;
+        linkedObj.setPosition(pos.x - (linkedObj.width / 2), pos.y - (linkedObj.height / 2));
+        refresh();
+      }
+    }
+
+    objDad.onClick = function(_)
+    {
+      if (linkedObj != null)
+      {
+        var pos = state.currentStage.getDad().cameraFocusPoint;
+        linkedObj.setPosition(pos.x - (linkedObj.width / 2), pos.y - (linkedObj.height / 2));
+        refresh();
+      }
+    }
+
+    objGF.onClick = function(_)
+    {
+      if (linkedObj != null)
+      {
+        var pos = state.currentStage.getGirlfriend().cameraFocusPoint;
+        linkedObj.setPosition(pos.x - (linkedObj.width / 2), pos.y - (linkedObj.height / 2));
+        refresh();
       }
     }
 

@@ -66,10 +66,12 @@ class CutsceneEditorState extends UIState
   var menubarItemResetZoom:MenuItem;
   var menubar:MenuBar;
   var objects:ListView;
+  var menubarItemWindowObjectProps:MenuCheckBox;
+  var menubarItemWindowCameraProps:MenuCheckBox;
 
   var timeline:CutsceneTimeline;
 
-  var currentStage:Null<Stage> = null;
+  public var currentStage:Null<Stage> = null;
 
   public var cameraObject:CutsceneCamObject;
 
@@ -109,8 +111,6 @@ class CutsceneEditorState extends UIState
     camHUD = new FlxCamera();
     camHUD.bgColor.alpha = 0;
 
-    trace(objects);
-
     FlxG.cameras.reset(camGame);
     FlxG.cameras.add(camPreview, false);
     FlxG.cameras.add(camHUD, false);
@@ -147,14 +147,13 @@ class CutsceneEditorState extends UIState
     loadStage('mainStageErect');
     initCharacters();
 
-    toggleDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
-
     cameraObject = new CutsceneCamObject(0, 0, camPreview);
     cameraObject.zoom = currentStage.camZoom;
     addToList(cameraObject, 'camera');
     add(cameraObject);
 
-    toggleDialog(CutsceneEditorDialogType.CAMERA_PROPERTIES);
+    updateDialog(CutsceneEditorDialogType.CAMERA_PROPERTIES);
+    updateDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
   }
 
   var zoomToLerp:Float = FlxG.camera.zoom;
@@ -260,7 +259,14 @@ class CutsceneEditorState extends UIState
         if (FlxG.mouse.justPressed) offset = [FlxG.mouse.viewX - theThing.x, FlxG.mouse.viewY - theThing.y];
         theThing.setPosition(FlxG.mouse.viewX - offset[0], FlxG.mouse.viewY - offset[1]);
         refreshOutline();
-        updateDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
+        if (isCamSelected)
+        {
+          updateDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
+        }
+        else
+        {
+          updateDialog(CutsceneEditorDialogType.CAMERA_PROPERTIES);
+        }
       }
     }
   }
@@ -400,7 +406,7 @@ class CutsceneEditorState extends UIState
 
   public function updateDialog(type:CutsceneEditorDialogType)
   {
-    if (!dialogs.exists(type) && dialogs[type].dialogVisible) return;
+    if (!dialogs.exists(type)) return;
 
     dialogs[type].refresh();
   }
@@ -422,6 +428,8 @@ class CutsceneEditorState extends UIState
     menubarItemExit.onClick = function(_) menuExit();
     menubarItemResetZoom.onClick = function(_) resetCameraZoom();
     objects.onChange = function(_) if (objects.selectedIndex != curSelected) changeSelectedObject(objects.selectedIndex, false);
+    menubarItemWindowObjectProps.onChange = function(_) toggleDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES, menubarItemWindowObjectProps.selected);
+    menubarItemWindowCameraProps.onChange = function(_) toggleDialog(CutsceneEditorDialogType.CAMERA_PROPERTIES, menubarItemWindowCameraProps.selected);
   }
 
   function changeSelectedObject(index:Int, first:Bool = true):Void
@@ -444,7 +452,7 @@ class CutsceneEditorState extends UIState
 
       if (members.contains(cameraObject)) remove(cameraObject);
       add(cameraObject);
-      swagOutlines.visible = true;
+      if (swagOutlines != null) swagOutlines.visible = true;
       refreshOutline();
     }
     else
