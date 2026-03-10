@@ -170,9 +170,9 @@ class CutsceneEditorState extends UIState
       handleMoving();
     }
 
-    FlxG.camera.zoom = FlxMath.lerp(FlxG.camera.zoom, zoomToLerp, 0.1);
-    FlxG.camera.scroll.x = FlxMath.lerp(FlxG.camera.scroll.x, camPosToLerp[0], 0.1);
-    FlxG.camera.scroll.y = FlxMath.lerp(FlxG.camera.scroll.y, camPosToLerp[1], 0.1);
+    FlxG.camera.zoom = FlxMath.lerp(FlxG.camera.zoom, zoomToLerp, elapsed * 30);
+    FlxG.camera.scroll.x = FlxMath.lerp(FlxG.camera.scroll.x, camPosToLerp[0], elapsed * 30);
+    FlxG.camera.scroll.y = FlxMath.lerp(FlxG.camera.scroll.y, camPosToLerp[1], elapsed * 30);
 
     updateBGSize();
 
