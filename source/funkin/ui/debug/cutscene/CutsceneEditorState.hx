@@ -68,6 +68,7 @@ class CutsceneEditorState extends UIState
   var objects:ListView;
   var menubarItemWindowObjectProps:MenuCheckBox;
   var menubarItemWindowCameraProps:MenuCheckBox;
+  var menubarItemWindowCameraPreview:MenuCheckBox;
 
   var timeline:CutsceneTimeline;
 
@@ -106,6 +107,7 @@ class CutsceneEditorState extends UIState
     camPreview = new FunkinCamera();
     camPreview.x = -450;
     camPreview.y = -220;
+    camPreview.visible = false;
     camPreview.flashSprite.scaleX = 0.25;
     camPreview.flashSprite.scaleY = 0.25;
     camHUD = new FlxCamera();
@@ -261,11 +263,11 @@ class CutsceneEditorState extends UIState
         refreshOutline();
         if (isCamSelected)
         {
-          updateDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
+          updateDialog(CutsceneEditorDialogType.CAMERA_PROPERTIES);
         }
         else
         {
-          updateDialog(CutsceneEditorDialogType.CAMERA_PROPERTIES);
+          updateDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
         }
       }
     }
@@ -430,6 +432,7 @@ class CutsceneEditorState extends UIState
     objects.onChange = function(_) if (objects.selectedIndex != curSelected) changeSelectedObject(objects.selectedIndex, false);
     menubarItemWindowObjectProps.onChange = function(_) toggleDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES, menubarItemWindowObjectProps.selected);
     menubarItemWindowCameraProps.onChange = function(_) toggleDialog(CutsceneEditorDialogType.CAMERA_PROPERTIES, menubarItemWindowCameraProps.selected);
+    menubarItemWindowCameraPreview.onChange = function(_) camPreview.visible = menubarItemWindowCameraPreview.selected;
   }
 
   function changeSelectedObject(index:Int, first:Bool = true):Void
