@@ -14,9 +14,14 @@ class SongItemGroup extends FlxTypedGroup<SongMenuItem>
   var rankBlurredShader:GaussianBlurShader = new GaussianBlurShader(1);
   var favIconBlurredShader:GaussianBlurShader = new GaussianBlurShader(1.2);
 
+  #if hl
+  // What the hell is the compiler about on here?
+  override function recycle(?cls:Class<Dynamic>, ?factory:Void->Dynamic, force:Bool = false, revive:Bool = true):SongMenuItem
+  #else
   override function recycle(?cls:Class<SongMenuItem>, ?factory:Void->SongMenuItem, force:Bool = false, revive:Bool = true):SongMenuItem
+  #end
   {
-    var capsule:SongMenuItem = super.recycle(cls, factory, force, revive);
+    var capsule:SongMenuItem = super.recycle(#if hl cast #end cls, factory, force, revive);
 
     // Apply the same shader instance to some elements so that we can use one draw call to render multiple of them.
     capsule.fakeBlurredRanking.shader = rankBlurredShader;
@@ -38,14 +43,21 @@ class SongItemGroup extends FlxTypedGroup<SongMenuItem>
 
     final capsulesToRender:Array<SongMenuItem> = [];
 
+    var hasTrail = false;
     for (capsule in this.members)
     {
-      if (capsule != null && capsule.exists && capsule.visible) capsulesToRender.push(capsule);
+      if (capsule != null && capsule.exists && capsule.visible)
+      {
+        if (capsule.hasTrail) hasTrail = true;
+        capsulesToRender.push(capsule);
+      }
     }
 
     if (capsulesToRender.length == 0) return;
 
-    final memberCount:Int = capsulesToRender[0].length; // Capsules always have a constant number of members to render.
+    var firstCapsule = capsulesToRender[0];
+    var memberCount:Int = firstCapsule.length;
+    if (hasTrail && !firstCapsule.hasTrail) memberCount += 2;
     for (i in 0...memberCount)
     {
       for (capsule in capsulesToRender)

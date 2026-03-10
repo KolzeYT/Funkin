@@ -891,6 +891,13 @@ class FreeplayState extends MusicBeatSubState
           characterId)) : (new MultiSparrowFreeplayDJ(x, y, characterId));
       case 'packer':
         dj = (scriptClass != "") ? (ScriptedPackerFreeplayDJ.scriptInit(scriptClass, x, y, characterId)) : (new PackerFreeplayDJ(x, y, characterId));
+      case 'custom':
+        dj = (scriptClass != "") ? (ScriptedBaseFreeplayDJ.scriptInit(scriptClass, x, y, characterId)) :
+          {
+            // force-skip intro only in fallback, since you can specify onIntroDone.dispatch in ScriptedBaseFreeplayDJ, and this is goddamn fallback
+            forceSkipIntro = true;
+            new BaseFreeplayDJ(x, y, characterId);
+          }; // We can't fallback on any other types, since the assets may be unspecified
     }
   }
 
@@ -1196,10 +1203,10 @@ class FreeplayState extends MusicBeatSubState
 
       FlxTween.tween(funnyCam, {"zoom": 1.05}, 0.3, {ease: FlxEase.elasticOut});
 
-      capsuleToRank.capsule.angle = -3;
-      FlxTween.tween(capsuleToRank.capsule, {angle: 0}, 0.5, {ease: FlxEase.backOut});
+      capsuleToRank.angle = -3;
+      FlxTween.tween(capsuleToRank, {angle: 0}, 0.5, {ease: FlxEase.backOut});
 
-      IntervalShake.shake(capsuleToRank.capsule, 0.3, 1 / 30, 0.1, 0, FlxEase.quadOut);
+      IntervalShake.shake(capsuleToRank, 0.3, 1 / 30, 0.1, 0, FlxEase.quadOut);
     });
 
     new FlxTimer().start(0.4, _ ->
@@ -1265,7 +1272,7 @@ class FreeplayState extends MusicBeatSubState
           {
             FlxTween.cancelTweensOf(capsule);
             // capsule.targetPos.x += 50;
-            capsule.fadeAnim();
+            capsule.fadeAnim(fromResultsParams?.newRank);
 
             rankVignette.color = capsule.getTrailColor();
             rankVignette.alpha = 1;
@@ -1300,8 +1307,8 @@ class FreeplayState extends MusicBeatSubState
             {
               capsule.doLerp = false;
 
-              capsule.capsule.angle = FlxG.random.float(-10 + (distFromSelected * 2), 10 - (distFromSelected * 2));
-              FlxTween.tween(capsule.capsule, {angle: 0}, 0.5, {ease: FlxEase.backOut});
+              capsule.angle = FlxG.random.float(-10 + (distFromSelected * 2), 10 - (distFromSelected * 2));
+              FlxTween.tween(capsule, {angle: 0}, 0.5, {ease: FlxEase.backOut});
 
               IntervalShake.shake(capsule, 0.6, 1 / 24, 0.12 / (distFromSelected + 1), 0, FlxEase.quadOut, function(_)
               {
@@ -1317,8 +1324,8 @@ class FreeplayState extends MusicBeatSubState
             {
               capsule.doLerp = false;
 
-              capsule.capsule.angle = FlxG.random.float(-10 + (distFromSelected * 2), 10 - (distFromSelected * 2));
-              FlxTween.tween(capsule.capsule, {angle: 0}, 0.5, {ease: FlxEase.backOut});
+              capsule.angle = FlxG.random.float(-10 + (distFromSelected * 2), 10 - (distFromSelected * 2));
+              FlxTween.tween(capsule, {angle: 0}, 0.5, {ease: FlxEase.backOut});
 
               IntervalShake.shake(capsule, 0.6, 1 / 24, 0.12 / (distFromSelected + 1), 0, FlxEase.quadOut, function(_)
               {
@@ -1643,6 +1650,7 @@ class FreeplayState extends MusicBeatSubState
     {
       rankAnimStart(fromResultsParams ?? {
         playRankAnim: true,
+        oldRank: currentCapsule.ranking.rank,
         newRank: PERFECT_GOLD,
         songId: "tutorial",
         difficultyId: "hard"

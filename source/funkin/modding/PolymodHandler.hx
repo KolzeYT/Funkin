@@ -52,7 +52,7 @@ class PolymodHandler
    * Where relative to the executable that mods are located.
    */
   static final MOD_FOLDER:String =
-    #if (REDIRECT_ASSETS_FOLDER && macos)
+    #if (REDIRECT_ASSETS_FOLDER && mac)
     '../../../../../../../example_mods'
     #elseif REDIRECT_ASSETS_FOLDER
     '../../../../example_mods'
@@ -61,13 +61,18 @@ class PolymodHandler
     #end;
 
   static final CORE_FOLDER:Null<String> =
-    #if (REDIRECT_ASSETS_FOLDER && macos)
+    #if (REDIRECT_ASSETS_FOLDER && mac)
     '../../../../../../../assets'
     #elseif REDIRECT_ASSETS_FOLDER
     '../../../../assets'
     #else
     null
     #end;
+
+  /**
+   * Populated with the directories of mods once they're successfully loaded.
+   */
+  public static var loadedModDirs:Array<String> = [];
 
   /**
    * Populated with the IDs of mods once they're successfully loaded.
@@ -95,7 +100,7 @@ class PolymodHandler
     createModRoot();
     #end
     trace('Initializing Polymod (using all mods)...');
-    loadModsById(getAllModIds());
+    loadModsByDir(getAllModDirs());
   }
 
   /**
@@ -108,7 +113,7 @@ class PolymodHandler
     createModRoot();
     #end
     trace('Initializing Polymod (using configured mods)...');
-    loadModsById(Save.instance.enabledModIds.value);
+    loadModsByDir(Save.instance.enabledModDirs.value);
   }
 
   /**
@@ -122,22 +127,22 @@ class PolymodHandler
     #end
     // We still need to configure the debug print calls etc.
     trace('Initializing Polymod (using no mods)...');
-    loadModsById([]);
+    loadModsByDir([]);
   }
 
   /**
-   * Load all the mods with the given ids.
-   * @param ids The ORDERED list of mod ids to load.
+   * Load all the mods with the directories they're in.
+   * @param dirs The ORDERED list of mod ids to load.
    */
-  public static function loadModsById(ids:Array<String>):Void
+  public static function loadModsByDir(dirs:Array<String>):Void
   {
-    if (ids.length == 0)
+    if (dirs.length == 0)
     {
       trace('You attempted to load zero mods.');
     }
     else
     {
-      trace('Attempting to load ${ids.length} mods...');
+      trace('Attempting to load ${dirs.length} mods...');
     }
 
     buildImports();
@@ -148,7 +153,7 @@ class PolymodHandler
       // Root directory for all mods.
       modRoot: MOD_FOLDER,
       // The directories for one or more mods to load.
-      dirs: ids,
+      dirs: dirs,
       // Framework being used to load assets.
       framework: OPENFL,
       // The current version of our API.
@@ -185,18 +190,20 @@ class PolymodHandler
     {
       if (loadedModList.length == 0)
       {
-        trace('Mod loading complete. We loaded no mods / ${ids.length} mods.');
+        trace('Mod loading complete. We loaded no mods / ${dirs.length} mods.');
       }
       else
       {
-        trace('Mod loading complete. We loaded ${loadedModList.length} / ${ids.length} mods.');
+        trace('Mod loading complete. We loaded ${loadedModList.length} / ${dirs.length} mods.');
       }
     }
 
     loadedModIds = [];
+    loadedModDirs = [];
     for (mod in loadedModList)
     {
       trace(' * ${mod.title} v${mod.modVersion} [${mod.id}]');
+      loadedModDirs.push(mod.dirName);
       loadedModIds.push(mod.id);
     }
 
@@ -256,12 +263,6 @@ class PolymodHandler
     {
       Polymod.addDefaultImport(cls);
     }
-
-    // Add import aliases for certain classes.
-    // NOTE: Scripted classes are automatically aliased to their parent class.
-    Polymod.addImportAlias('flixel.math.FlxPoint', flixel.math.FlxPoint.FlxBasePoint);
-
-    Polymod.addImportAlias('funkin.data.event.SongEventSchema', funkin.data.event.SongEventSchema.SongEventSchemaRaw);
 
     // `lime.utils.Assets` literally just has a private `resolveClass` function for some reason? so we replace it with our own.
     Polymod.addImportAlias('lime.utils.Assets', funkin.Assets);
@@ -558,17 +559,27 @@ class PolymodHandler
   }
 
   /**
+   * Retrieve a list of ALL mod directory names, including disabled mods.
+   * @return An array of mod direcotry names
+   */
+  public static function getAllModDirs():Array<String>
+  {
+    var modDirs:Array<String> = [for (i in getAllMods()) i.dirName];
+    return modDirs;
+  }
+
+  /**
    * Retrieve a list of metadata for all enabled mods.
    * @return An array of mod metadata
    */
   public static function getEnabledMods():Array<ModMetadata>
   {
-    var modIds:Array<String> = Save.instance.enabledModIds.value;
+    var modDirs:Array<String> = Save.instance.enabledModDirs.value;
     var modMetadata:Array<ModMetadata> = getAllMods();
     var enabledMods:Array<ModMetadata> = [];
     for (item in modMetadata)
     {
-      if (modIds.indexOf(item.id) != -1)
+      if (modDirs.indexOf(item.dirName) != -1)
       {
         enabledMods.push(item);
       }
