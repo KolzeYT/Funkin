@@ -70,8 +70,7 @@ class CutsceneEditorState extends UIState
   var menubarItemWindowCameraProps:MenuCheckBox;
   var menubarItemWindowCameraPreview:MenuCheckBox;
 
-  var timeline:CutsceneTimeline;
-
+  // var timeline:CutsceneTimeline;
   public var currentStage:Null<Stage> = null;
 
   public var cameraObject:CutsceneCamObject;
@@ -104,6 +103,7 @@ class CutsceneEditorState extends UIState
     Main.debugDisplay.x = 30;
 
     camGame = new FunkinCamera();
+    camGame.y = -Std.int(FlxG.height / 3 / 2);
     camPreview = new FunkinCamera();
     camPreview.x = -450;
     camPreview.y = -220;
@@ -185,24 +185,28 @@ class CutsceneEditorState extends UIState
 
   function handleMoving():Void
   {
+    var mouse = FlxG.mouse;
+
+    var mouseMoved = mouse.deltaViewX != 0 && mouse.deltaViewY != 0;
+
     var selectables = [];
     for (object in moveableObjects)
     {
-      if (FlxG.mouse.overlaps(object)) selectables.insert(0, object);
+      if (mouse.overlaps(object)) selectables.insert(0, object);
     }
 
     for (object in selectables)
     {
-      if (!FlxG.mouse.overlaps(object)) selectables.remove(object);
+      if (!mouse.overlaps(object)) selectables.remove(object);
     }
 
-    if (FlxG.mouse.pressedMiddle)
+    if (mouse.pressedMiddle)
     {
       isMovingCam = true;
-      if (FlxG.mouse.justMoved)
+      if (mouse.justMoved)
       {
-        camPosToLerp[0] -= FlxG.mouse.deltaScreenX;
-        camPosToLerp[1] -= FlxG.mouse.deltaScreenY;
+        camPosToLerp[0] -= mouse.deltaScreenX;
+        camPosToLerp[1] -= mouse.deltaScreenY;
       }
       Cursor.cursorMode = Grabbing;
     }
@@ -215,38 +219,38 @@ class CutsceneEditorState extends UIState
     {
       if (selectables.length > 0)
       {
-        if (FlxG.mouse.pressed)
+        if (mouse.pressed)
         {
-          if (FlxG.mouse.justPressed
-            && (curSelected < 0 || !FlxG.mouse.overlaps(moveableObjects[curSelected]))
+          if (mouse.justPressed
+            && (curSelected < 0 || !mouse.overlaps(moveableObjects[curSelected]))
             && curSelected != moveableObjects.indexOf(selectables[0]))
           {
             changeSelectedObject(moveableObjects.indexOf(selectables[0]));
           }
-          Cursor.cursorMode = Grabbing;
+          if (Cursor.cursorMode != Grabbing) Cursor.cursorMode = Grabbing;
         }
         else
         {
-          Cursor.cursorMode = Pointer;
+          if (Cursor.cursorMode != Pointer) Cursor.cursorMode = Pointer;
         }
 
-        if (FlxG.mouse.justPressed)
+        if (mouse.justPressed)
         {
           trace('clicked');
         }
       }
       else
       {
-        Cursor.cursorMode = Default;
+        if (Cursor.cursorMode != Default) Cursor.cursorMode = Default;
       }
     }
 
     if (curSelected >= 0)
     {
       var theThing = moveableObjects[curSelected];
-      var overlaps = FlxG.mouse.overlaps(theThing);
+      var overlaps = mouse.overlaps(theThing);
 
-      if (FlxG.mouse.justPressed)
+      if (mouse.justPressed)
       {
         if (!overlaps)
         {
@@ -254,13 +258,13 @@ class CutsceneEditorState extends UIState
         }
       }
 
-      if (FlxG.mouse.justReleased && firstClick) firstClick = false;
+      if (mouse.justReleased && firstClick) firstClick = false;
 
-      if (overlaps && FlxG.mouse.pressed && !firstClick)
+      if (overlaps && mouse.pressed && !firstClick)
       {
-        if (FlxG.mouse.justPressed) offset = [FlxG.mouse.viewX - theThing.x, FlxG.mouse.viewY - theThing.y];
-        theThing.setPosition(FlxG.mouse.viewX - offset[0], FlxG.mouse.viewY - offset[1]);
-        refreshOutline();
+        if (mouse.justPressed) offset = [mouse.viewX - theThing.x, mouse.viewY - theThing.y];
+        theThing.setPosition(mouse.viewX - offset[0], mouse.viewY - offset[1]);
+        refreshOutlinePos();
         if (isCamSelected)
         {
           updateDialog(CutsceneEditorDialogType.CAMERA_PROPERTIES);
@@ -406,11 +410,11 @@ class CutsceneEditorState extends UIState
     refreshList();
   }
 
-  public function updateDialog(type:CutsceneEditorDialogType)
+  public function updateDialog(type:CutsceneEditorDialogType, onlyPos:Bool = false)
   {
     if (!dialogs.exists(type)) return;
 
-    dialogs[type].refresh();
+    dialogs[type].refresh(onlyPos);
   }
 
   public function toggleDialog(type:CutsceneEditorDialogType, show:Bool = true)
@@ -423,7 +427,6 @@ class CutsceneEditorState extends UIState
 
   function addUI():Void
   {
-    timeline = new CutsceneTimeline();
     dialogs.set(CutsceneEditorDialogType.OBJECT_PROPERTIES, new CutsceneEditorObjectPropertiesToolbox(this));
     dialogs.set(CutsceneEditorDialogType.CAMERA_PROPERTIES, new CutsceneEditorObjectPropertiesCameraToolbox(this));
 
@@ -477,9 +480,24 @@ class CutsceneEditorState extends UIState
     swagOutlines.angle = sprite.angle;
     var lineStyle:LineStyle = {color: FlxColor.RED, thickness: 6};
     swagOutlines.drawRect(0, 0, swagOutlines.frameWidth, swagOutlines.frameHeight, FlxColor.TRANSPARENT, lineStyle);
-    add(swagOutlines);
 
-    if (sprite == cameraObject)
+    if (isCamSelected)
+    {
+      swagOutlines.x -= (1280 * (sprite.scale.x - 1)) / 2;
+      swagOutlines.y -= (720 * (sprite.scale.y - 1)) / 2;
+    }
+    add(swagOutlines);
+  }
+
+  public function refreshOutlinePos():Void
+  {
+    if (curSelected < 0) return;
+    var sprite = moveableObjects[curSelected];
+
+    swagOutlines.x = sprite.x;
+    swagOutlines.y = sprite.y;
+
+    if (isCamSelected)
     {
       swagOutlines.x -= (1280 * (sprite.scale.x - 1)) / 2;
       swagOutlines.y -= (720 * (sprite.scale.y - 1)) / 2;

@@ -170,7 +170,8 @@ class CutsceneEditorObjectPropertiesToolbox extends CutsceneEditorDefaultToolbox
 
   function onClose(event:UIEvent):Void
   {
-    // stageEditorState.menubarItemWindowObjectProps.selected = false;
+    @:privateAccess
+    cutsceneEditorState.menubarItemWindowObjectProps.selected = false;
   }
 
   override public function lock(on:Bool = true):Void
@@ -179,7 +180,7 @@ class CutsceneEditorObjectPropertiesToolbox extends CutsceneEditorDefaultToolbox
     objScrollView.disabled = on;
   }
 
-  override public function refresh():Void
+  override public function refresh(onlyPos:Bool = false):Void
   {
     linkedObj = cutsceneEditorState.selectedSprite;
 

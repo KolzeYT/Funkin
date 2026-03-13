@@ -40,7 +40,7 @@ class CutsceneEditorDefaultToolbox extends CollapsibleDialog
   /**
    * Override to implement this.
    */
-  public function refresh()
+  public function refresh(onlyPos:Bool = false)
   {
   }
 

@@ -13,6 +13,8 @@ class CutsceneCamObject extends FunkinSprite
     var scale:Float = 1 / val;
     this.scale.set(scale, scale);
 
+    followCamera.zoom = val;
+
     zoom = val;
     return val;
   }
@@ -33,10 +35,11 @@ class CutsceneCamObject extends FunkinSprite
   override function update(elapsed:Float):Void
   {
     super.update(elapsed);
-
-    followCamera.scroll.x = this.x;
-    followCamera.scroll.y = this.y;
-    followCamera.zoom = zoom;
-    followCamera.angle = angle;
+    if (followCamera.visible)
+    {
+      if (followCamera.scroll.x != this.x) followCamera.scroll.x = this.x;
+      if (followCamera.scroll.y != this.y) followCamera.scroll.y = this.y;
+      // followCamera.angle = angle;
+    }
   }
 }

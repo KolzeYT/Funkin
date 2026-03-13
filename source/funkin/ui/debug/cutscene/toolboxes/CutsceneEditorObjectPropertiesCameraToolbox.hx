@@ -111,16 +111,20 @@ class CutsceneEditorObjectPropertiesCameraToolbox extends CutsceneEditorDefaultT
 
   function onClose(event:UIEvent):Void
   {
-    // stageEditorState.menubarItemWindowObjectProps.selected = false;
+    @:privateAccess
+    cutsceneEditorState.menubarItemWindowCameraProps.selected = false;
   }
 
-  override public function refresh():Void
+  override public function refresh(onlyPos:Bool = false):Void
   {
     linkedObj = cutsceneEditorState.cameraObject;
 
-    objPosX.step = cutsceneEditorState.moveStep;
-    objPosY.step = cutsceneEditorState.moveStep;
-    objAngle.step = cutsceneEditorState.moveStep;
+    if (objPosX.step != cutsceneEditorState.moveStep)
+    {
+      objPosX.step = cutsceneEditorState.moveStep;
+      objPosY.step = cutsceneEditorState.moveStep;
+      objAngle.step = cutsceneEditorState.moveStep;
+    }
     // objAngle.step = funkin.save.Save.instance.cutsceneEditorState.value;
 
     if (linkedObj == null)
