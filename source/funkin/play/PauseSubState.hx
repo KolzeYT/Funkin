@@ -605,6 +605,7 @@ class PauseSubState extends MusicBeatSubState
   // ===============
   var fastOffset:Bool = false;
   var lastOffsetPress:Float = 0;
+  var offsetFloat:Float = Preferences.globalOffset ?? 0;
 
   /**
    * Process user inputs every frame.
@@ -680,7 +681,6 @@ class PauseSubState extends MusicBeatSubState
   function handleModifyingOffsets():Bool
   {
     #if !mobile
-    var offset:Int = Preferences.globalOffset ?? 0;
     if (FlxG.keys.pressed.SHIFT && (controls.UI_UP || controls.UI_DOWN))
     {
       lastOffsetPress += FlxG.elapsed;
@@ -695,22 +695,22 @@ class PauseSubState extends MusicBeatSubState
 
         if (controls.UI_UP_P || controls.UI_DOWN_P)
         {
-          offset += (controls.UI_UP_P || controls.UI_UP) ? 1 : -1;
+          offsetFloat += (controls.UI_UP_P || controls.UI_UP) ? 1 : -1;
 
-          offsetText.text = 'Global Offset: ${offset}ms';
+          offsetText.text = 'Global Offset: ${Std.int(offsetFloat)}ms';
         }
       }
       else
       {
-        offset += (controls.UI_UP_P || controls.UI_UP) ? 1 : -1;
+        offsetFloat += ((controls.UI_UP_P || controls.UI_UP) ? 1 : -1) * (FlxG.elapsed * 30);
 
-        offsetText.text = 'Global Offset: ${offset}ms';
+        offsetText.text = 'Global Offset: ${Std.int(offsetFloat)}ms';
       }
 
-      if (offset > 1500) offset = 1500;
-      if (offset < -1500) offset = -1500;
+      if (offsetFloat > 1500) offsetFloat = 1500;
+      if (offsetFloat < -1500) offsetFloat = -1500;
 
-      Preferences.globalOffset = offset;
+      Preferences.globalOffset = Std.int(offsetFloat);
 
       return true;
     }
