@@ -22,6 +22,7 @@ import flixel.graphics.frames.FlxFrame;
 import flixel.addons.display.FlxGridOverlay;
 import funkin.ui.debug.cutscene.toolboxes.*;
 import funkin.ui.debug.cutscene.components.*;
+import funkin.ui.debug.cutscene.components.CutsceneTimeline.CutsceneEventType;
 import haxe.ui.core.Screen;
 import funkin.ui.mainmenu.MainMenuState;
 import funkin.input.Cursor;
@@ -34,6 +35,7 @@ import funkin.modding.events.ScriptEvent;
 import funkin.modding.events.ScriptEventDispatcher;
 import openfl.geom.Rectangle;
 import haxe.ui.containers.dialogs.CollapsibleDialog;
+import haxe.ui.components.NumberStepper;
 
 using flixel.util.FlxSpriteUtil;
 
@@ -69,6 +71,7 @@ class CutsceneEditorState extends UIState
   var menubarItemWindowObjectProps:MenuCheckBox;
   var menubarItemWindowCameraProps:MenuCheckBox;
   var menubarItemWindowCameraPreview:MenuCheckBox;
+  var timelineLength:NumberStepper;
 
   // var timeline:CutsceneTimeline;
   public var currentStage:Null<Stage> = null;
@@ -76,6 +79,8 @@ class CutsceneEditorState extends UIState
   public var cameraObject:CutsceneCamObject;
 
   var moveableObjects:Array<FunkinSprite> = [];
+
+  var timeline:CutsceneTimeline;
 
   var nameMap:Map<FunkinSprite, String> = new Map<FunkinSprite, String>();
 
@@ -156,6 +161,12 @@ class CutsceneEditorState extends UIState
 
     updateDialog(CutsceneEditorDialogType.CAMERA_PROPERTIES);
     updateDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
+
+    timeline = new CutsceneTimeline(this, Std.int(FlxG.width / 2 - 350), Std.int(FlxG.height - 200));
+    timeline.cameras = [camHUD];
+    add(timeline);
+
+    timeline.addEvent({time: 0.5, type: VARIABLE_TWEEN, params: [cameraObject, 'zoom', 1.3, 2]});
   }
 
   var zoomToLerp:Float = FlxG.camera.zoom;
@@ -436,6 +447,7 @@ class CutsceneEditorState extends UIState
     menubarItemWindowObjectProps.onChange = function(_) toggleDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES, menubarItemWindowObjectProps.selected);
     menubarItemWindowCameraProps.onChange = function(_) toggleDialog(CutsceneEditorDialogType.CAMERA_PROPERTIES, menubarItemWindowCameraProps.selected);
     menubarItemWindowCameraPreview.onChange = function(_) camPreview.visible = menubarItemWindowCameraPreview.selected;
+    timelineLength.onChange = function(_) timeline.timeLength = timelineLength.pos;
   }
 
   function changeSelectedObject(index:Int, first:Bool = true):Void
