@@ -17,7 +17,15 @@ class CutsceneTimeline extends FlxSpriteGroup
 
   public var time:Float = 0;
 
-  public var timeLength:Float = 0;
+  public var timeLength(default, set):Float = 0;
+
+  function set_timeLength(value:Float):Float
+  {
+    blackoutThing.makeGraphic(Std.int(700 * ((previewZoom - value) / previewZoom)), 200, 0xFF000000);
+    blackoutThing.x = bg.x + bg.width * (value / previewZoom);
+    timeLength = value;
+    return value;
+  }
 
   public var isPlaying:Bool = false;
 
@@ -25,13 +33,15 @@ class CutsceneTimeline extends FlxSpriteGroup
 
   var sprites:Array<TimelineEventSprite> = [];
 
-  public var events:Array<CutsceneEvent> = []; // TODO: Make it CutsceneEvent.
+  public var events:Array<CutsceneEvent> = [];
 
   var cutsceneState:CutsceneEditorState;
 
   var playhead:FlxSprite;
 
   public var bg:FlxSprite;
+
+  var blackoutThing:FlxSprite;
 
   public function new(state:CutsceneEditorState, x:Int = 0, y:Int = 0)
   {
@@ -41,9 +51,13 @@ class CutsceneTimeline extends FlxSpriteGroup
 
     bg = new FlxSprite().makeGraphic(700, 200, 0xFF373737);
 
+    blackoutThing = new FlxSprite().makeGraphic(700, 200, 0xFF000000);
+    blackoutThing.alpha = 0.2;
+
     playhead = new FlxSprite().makeGraphic(5, Std.int(bg.height), FlxColor.CYAN);
 
     add(bg);
+    add(blackoutThing);
     add(playhead);
   }
 
@@ -60,12 +74,13 @@ class CutsceneTimeline extends FlxSpriteGroup
       time += vel * elapsed;
     }
 
-    playhead.x = bg.x + bg.width * (time / previewZoom);
-
     time = FlxMath.bound(time, 0, timeLength);
+
+    playhead.x = bg.x + bg.width * (time / previewZoom) - playhead.width / 2;
+
     if ((time == 0 || time == timeLength) && isPlaying) isPlaying = false;
 
-    trace(time);
+    // trace(time);
 
     for (keyframe in keyframes)
     {
@@ -81,15 +96,19 @@ class CutsceneTimeline extends FlxSpriteGroup
   public function addEvent(event:CutsceneEvent):Void
   {
     events.push(event);
+
+    var keyframe:Dynamic = null;
+
     if (event.type == CutsceneEventType.VARIABLE_TWEEN)
     {
       var val:Dynamic = {};
       Reflect.setField(val, event.params[1], event.params[2]);
       var newTween:FlxTween = FlxTween.tween(event.params[0], val, event.params[3], {type: 2});
-      keyframes.push({time: event.time, tween: newTween});
+      keyframe = {time: event.time, tween: newTween};
+      keyframes.push(keyframe);
     }
-    var sprite:TimelineEventSprite = new TimelineEventSprite(this, event);
-    insert(members.indexOf(playhead), sprite);
+    var sprite:TimelineEventSprite = new TimelineEventSprite(this, event, keyframe == null ? null : keyframe);
+    insert(members.indexOf(blackoutThing), sprite);
     sprites.push(sprite);
   }
 
@@ -113,16 +132,23 @@ class TimelineEventSprite extends FlxSpriteGroup
 
   var timeline:CutsceneTimeline;
 
+  var keyframe:Null<Keyframe> = null;
+
   var line:FlxSprite;
 
   var square:FlxSprite;
 
-  public function new(timeline:CutsceneTimeline, event:CutsceneEvent)
+  var moving:Bool = false;
+
+  var selected:Bool = false;
+
+  public function new(timeline:CutsceneTimeline, event:CutsceneEvent, keyframe:Null<Keyframe>)
   {
     super();
 
     this.timeline = timeline;
     this.event = event;
+    this.keyframe = keyframe;
 
     square = new FlxSprite(0, 10).makeGraphic(25, 25, FlxColor.GRAY);
     square.x -= square.width / 2;
@@ -142,9 +168,51 @@ class TimelineEventSprite extends FlxSpriteGroup
   {
     super.update(elapsed);
 
+    trace(FlxG.mouse.overlaps(square, timeline.cameras[0]));
+
+    var mouse = FlxG.mouse;
+
+    if (mouse.overlaps(square, timeline.cameras[0]))
+    {
+      trace('everlap');
+      if (mouse.justPressed)
+      {
+        if (!selected) select();
+        else
+        {
+          moving = true;
+        }
+      }
+    }
+    else if (mouse.justPressed) deselect();
+
+    if (mouse.justReleased && moving) moving = false;
+
+    if (moving)
+    {
+      event.time = FlxMath.bound((FlxG.mouse.gameX - timeline.x) / (timeline.bg.width / timeline.previewZoom), 0, timeline.previewZoom);
+      trace(event.time);
+      if (keyframe != null) keyframe.time = event.time;
+    }
+
     // line.x = Std.int(timeline.bg.width * line.scale.x / 2);
     // line.scale.x = event.params[3] / timeline.previewZoom;
     // trace(line.scale.x);
+  }
+
+  public function select():Void
+  {
+    FlxTween.globalManager.cancelTweensOf(square);
+    FlxTween.tween(square.scale, {x: 1.3, y: 1.3}, 0.2, {ease: FlxEase.backOut});
+    selected = true;
+  }
+
+  public function deselect():Void
+  {
+    FlxTween.globalManager.cancelTweensOf(square);
+    FlxTween.tween(square.scale, {x: 1, y: 1}, 0.2, {ease: FlxEase.backIn});
+    selected = false;
+    moving = false;
   }
 }
 

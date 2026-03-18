@@ -46,7 +46,8 @@ class CutsceneEditorState extends UIState
 
   public var moveStep:Int = 1;
 
-  var camHUD:FlxCamera;
+  public var camHUD:FlxCamera;
+
   var camGame:FunkinCamera;
   var camPreview:FunkinCamera;
 
@@ -163,6 +164,7 @@ class CutsceneEditorState extends UIState
     updateDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES);
 
     timeline = new CutsceneTimeline(this, Std.int(FlxG.width / 2 - 350), Std.int(FlxG.height - 200));
+    timeline.timeLength = timelineLength.pos;
     timeline.cameras = [camHUD];
     add(timeline);
 
