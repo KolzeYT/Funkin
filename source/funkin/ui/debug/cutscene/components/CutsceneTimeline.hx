@@ -29,9 +29,13 @@ class CutsceneTimeline extends FlxSpriteGroup
 
   public var isPlaying:Bool = false;
 
+  public var isMoving:Bool = false;
+
+  public var currentEvent:Null<TimelineEventSprite>;
+
   var keyframes:Array<Keyframe> = [];
 
-  var sprites:Array<TimelineEventSprite> = [];
+  var sprites:Array<TimelineEventSprite> = []; // TODO: Leave only this and remove keyframes and events.
 
   public var events:Array<CutsceneEvent> = [];
 
@@ -65,12 +69,13 @@ class CutsceneTimeline extends FlxSpriteGroup
   {
     super.update(elapsed);
 
-    if (FlxG.keys.justPressed.SPACE) isPlaying = !isPlaying;
+    if (FlxG.keys.justPressed.SPACE) togglePlay();
 
     if (isPlaying) time += elapsed;
     else
     {
       var vel:Float = (FlxG.keys.pressed.LEFT ? -1 : 0) + (FlxG.keys.pressed.RIGHT ? 1 : 0);
+      isMoving = vel != 0;
       time += vel * elapsed;
     }
 
@@ -82,15 +87,29 @@ class CutsceneTimeline extends FlxSpriteGroup
 
     // trace(time);
 
-    for (keyframe in keyframes)
-    {
-      keyframe.tween.percent = FlxMath.bound((time - keyframe.time) / (keyframe.tween.duration), 0, 1);
-    }
-
     for (sprite in sprites)
     {
+      if (sprite.keyframe != null)
+      {
+        if (sprite.moving || isPlaying || isMoving)
+        {
+          sprite.keyframe.tween.active = true;
+          sprite.keyframe.tween.percent = FlxMath.bound((time - sprite.keyframe.time) / (sprite.keyframe.tween.duration), 0, 1);
+        }
+        else
+        {
+          sprite.keyframe.tween.active = false;
+        }
+      }
+
       sprite.x = bg.x + bg.width * (sprite.event.time / previewZoom);
     }
+  }
+
+  public function togglePlay():Void
+  {
+    isPlaying = !isPlaying;
+    cutsceneState.changeSelectedObject(-1, false);
   }
 
   public function addEvent(event:CutsceneEvent):Void
@@ -112,7 +131,7 @@ class CutsceneTimeline extends FlxSpriteGroup
     sprites.push(sprite);
   }
 
-  // public function executeEvent(event:CutsceneEvent)
+  // public function executeEvent(event:CutsceneEvent):Void
   // {
   //   switch (event.type)
   //   {
@@ -132,13 +151,13 @@ class TimelineEventSprite extends FlxSpriteGroup
 
   var timeline:CutsceneTimeline;
 
-  var keyframe:Null<Keyframe> = null;
+  public var keyframe:Null<Keyframe> = null;
 
   var line:FlxSprite;
 
   var square:FlxSprite;
 
-  var moving:Bool = false;
+  public var moving:Bool = false;
 
   var selected:Bool = false;
 
@@ -162,6 +181,10 @@ class TimelineEventSprite extends FlxSpriteGroup
       add(line);
     }
     add(square);
+  }
+
+  public function refresh():Void
+  {
   }
 
   public override function update(elapsed:Float):Void
@@ -191,10 +214,9 @@ class TimelineEventSprite extends FlxSpriteGroup
     if (moving)
     {
       event.time = FlxMath.bound((FlxG.mouse.gameX - timeline.x) / (timeline.bg.width / timeline.previewZoom), 0, timeline.previewZoom);
-      trace(event.time);
-      if (keyframe != null) keyframe.time = event.time;
     }
 
+    if (keyframe != null) keyframe.time = event.time;
     // line.x = Std.int(timeline.bg.width * line.scale.x / 2);
     // line.scale.x = event.params[3] / timeline.previewZoom;
     // trace(line.scale.x);
@@ -205,6 +227,7 @@ class TimelineEventSprite extends FlxSpriteGroup
     FlxTween.globalManager.cancelTweensOf(square);
     FlxTween.tween(square.scale, {x: 1.3, y: 1.3}, 0.2, {ease: FlxEase.backOut});
     selected = true;
+    timeline.currentEvent = this;
   }
 
   public function deselect():Void
@@ -213,6 +236,7 @@ class TimelineEventSprite extends FlxSpriteGroup
     FlxTween.tween(square.scale, {x: 1, y: 1}, 0.2, {ease: FlxEase.backIn});
     selected = false;
     moving = false;
+    if (timeline.currentEvent == this) timeline.currentEvent = null;
   }
 }
 

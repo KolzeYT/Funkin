@@ -72,19 +72,18 @@ class CutsceneEditorState extends UIState
   var menubarItemWindowObjectProps:MenuCheckBox;
   var menubarItemWindowCameraProps:MenuCheckBox;
   var menubarItemWindowCameraPreview:MenuCheckBox;
+  var menubarItemKeyframeProps:MenuCheckBox;
   var timelineLength:NumberStepper;
 
-  // var timeline:CutsceneTimeline;
   public var currentStage:Null<Stage> = null;
 
   public var cameraObject:CutsceneCamObject;
 
-  var moveableObjects:Array<FunkinSprite> = [];
+  var moveableObjects:Array<CutsceneObject> = [];
 
-  var timeline:CutsceneTimeline;
+  public var timeline:CutsceneTimeline;
 
-  var nameMap:Map<FunkinSprite, String> = new Map<FunkinSprite, String>();
-
+  // var nameMap:Map<FunkinSprite, String> = new Map<FunkinSprite, String>();
   var curSelected:Null<Int> = null;
 
   var bg:FlxSprite;
@@ -199,8 +198,6 @@ class CutsceneEditorState extends UIState
   function handleMoving():Void
   {
     var mouse = FlxG.mouse;
-
-    var mouseMoved = mouse.deltaViewX != 0 && mouse.deltaViewY != 0;
 
     var selectables = [];
     for (object in moveableObjects)
@@ -403,14 +400,15 @@ class CutsceneEditorState extends UIState
     for (object in moveableObjects)
     {
       if (object != cameraObject) object.cameras = [camGame, camPreview];
-      objects.dataSource.add({text: nameMap[object], id: object});
+      objects.dataSource.add({text: object.name, id: object});
     }
   }
 
-  function addToList(object:FunkinSprite, name:String):Void
+  function addToList(object:Dynamic, name:String):Void
   {
-    moveableObjects.push(object);
-    nameMap[object] = name;
+    var cutsceneObject = Std.isOfType(object, FunkinSprite) ? cast(object, CutsceneObject) : object;
+    cutsceneObject.name = name;
+    moveableObjects.push(cutsceneObject);
   }
 
   function resortObjects():Void
@@ -442,17 +440,19 @@ class CutsceneEditorState extends UIState
   {
     dialogs.set(CutsceneEditorDialogType.OBJECT_PROPERTIES, new CutsceneEditorObjectPropertiesToolbox(this));
     dialogs.set(CutsceneEditorDialogType.CAMERA_PROPERTIES, new CutsceneEditorObjectPropertiesCameraToolbox(this));
+    dialogs.set(CutsceneEditorDialogType.KEYFRAME_PROPERTIES, new CutsceneEditorObjectPropertiesKeyframeToolbox(this));
 
     menubarItemExit.onClick = function(_) menuExit();
     menubarItemResetZoom.onClick = function(_) resetCameraZoom();
     objects.onChange = function(_) if (objects.selectedIndex != curSelected) changeSelectedObject(objects.selectedIndex, false);
     menubarItemWindowObjectProps.onChange = function(_) toggleDialog(CutsceneEditorDialogType.OBJECT_PROPERTIES, menubarItemWindowObjectProps.selected);
     menubarItemWindowCameraProps.onChange = function(_) toggleDialog(CutsceneEditorDialogType.CAMERA_PROPERTIES, menubarItemWindowCameraProps.selected);
+    menubarItemKeyframeProps.onChange = function(_) toggleDialog(CutsceneEditorDialogType.CAMERA_PROPERTIES, menubarItemWindowCameraProps.selected);
     menubarItemWindowCameraPreview.onChange = function(_) camPreview.visible = menubarItemWindowCameraPreview.selected;
     timelineLength.onChange = function(_) timeline.timeLength = timelineLength.pos;
   }
 
-  function changeSelectedObject(index:Int, first:Bool = true):Void
+  public function changeSelectedObject(index:Int, first:Bool = true):Void
   {
     objects.selectedIndex = index;
     curSelected = index;
@@ -553,4 +553,9 @@ enum CutsceneEditorDialogType
    * The Camera Properties Options Dialog.
    */
   CAMERA_PROPERTIES;
+
+  /**
+   * The Keyframe Properties Options Dialog.
+   */
+  KEYFRAME_PROPERTIES;
 }

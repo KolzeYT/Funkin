@@ -1,10 +1,10 @@
 package funkin.ui.debug.cutscene.components;
 
 import funkin.graphics.FunkinCamera;
-import funkin.graphics.FunkinSprite;
+import funkin.ui.debug.cutscene.components.CutsceneObject;
 import flixel.util.FlxColor;
 
-class CutsceneCamObject extends FunkinSprite
+class CutsceneCamObject extends CutsceneObject
 {
   public var zoom(default, set):Float = 1;
 
